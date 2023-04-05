@@ -1,4 +1,4 @@
-# Rust Rocket API
+# Rust Rocket API Example
 
 [rocket](https://rocket.rs/)
 
