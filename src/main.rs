@@ -8,7 +8,6 @@ mod infrastructure;
 mod presentation;
 
 use crate::infrastructure::middleware::postgres::create_db_pool;
-use crate::infrastructure::middleware::redis::create_redis_pool;
 
 use crate::presentation::application_controller::*;
 use crate::presentation::errors_controller::*;
@@ -21,17 +20,14 @@ async fn rocket() -> _ {
 
     // from .env file get DATABASE_URL
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let redis_url = env::var("REDIS_URL").expect("REDIS_URL must be set");
 
     // create database pool
-    let pool = create_db_pool(&database_url).await.expect("Failed to create pool");
-
-    // create session pool
-    // let session = create_redis_pool(&redis_url).await.expect("Failed to create redis pool");
+    let pool = create_db_pool(&database_url)
+        .await
+        .expect("Failed to create pool");
 
     rocket::build()
         .manage(pool)
-        // .manage(session)
         .register(
             "/",
             catchers![response_not_found, response_internal_server_error],

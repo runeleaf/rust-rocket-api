@@ -2,7 +2,6 @@ use rocket::serde::json::Json;
 use rocket::*; // ::{get, post, launch, catch, routes};
 
 use sqlx::{Pool, Postgres};
-use rocket_session_store::{Session, SessionStore};
 
 use crate::infrastructure::request::user_request::UserRequest;
 use crate::infrastructure::response::user_response::UserResponse;
@@ -14,13 +13,12 @@ pub async fn show_user(id: i32, pool: &State<Pool<Postgres>>) -> (http::Status, 
     let user = sqlx::query_as!(User, "SELECT id, name, age FROM users where id = $1", id)
         .fetch_one(&**pool)
         .await;
+
     (http::Status::Ok, Json(user.unwrap()))
 }
 
 #[get("/users")]
 pub async fn index_user(pool: &State<Pool<Postgres>>) -> (http::Status, Json<Vec<User>>) {
-    let name = session.get();
-    println!("{:?}", pool);
     let users = sqlx::query_as!(User, "SELECT id, name, age FROM users order by id desc")
         .fetch_all(&**pool)
         .await;
@@ -30,13 +28,27 @@ pub async fn index_user(pool: &State<Pool<Postgres>>) -> (http::Status, Json<Vec
 }
 
 #[post("/users", data = "<user>")]
-pub fn create_user(user: Json<UserRequest>) -> (http::Status, Json<UserResponse>) {
+pub async fn create_user(
+    pool: &State<Pool<Postgres>>,
+    user: Json<UserRequest>,
+) -> (http::Status, Json<UserResponse>) {
+    let new_user = sqlx::query_as!(
+        User,
+        "INSERT INTO users (name, age, created_at, updated_at) VALUES ($1, $2, now(), now()) RETURNING id, name, age",
+        user.name,
+        user.age
+    )
+    .fetch_one(&**pool)
+    .await;
+
+    let new_user = new_user.unwrap();
+
     (
         http::Status::Created,
         Json(UserResponse {
-            id: "1".to_string(),
-            name: user.name.clone(),
-            age: user.age.clone(),
+            id: new_user.id.to_string(),
+            name: new_user.name,
+            age: new_user.age,
         }),
     )
 }
